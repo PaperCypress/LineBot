@@ -11,6 +11,7 @@ class Food {
       this.name = name;
       this.amount = amount;
       this.expiryDate = new Date(expiryDate); // Parsing expiry date as a Date object
+      
   }
 
   // Method to check if the food item has expired
@@ -23,7 +24,7 @@ class Food {
   displayInfo() {
     var ed="";
     var am="";
-    if(this.expiryDate){//truthy
+    if(this.expiryDate&&this.expiryDate.toDateString()!='Invalid Date'){//truthy
       ed=`，${this.expiryDate.toDateString()}過期`;
     }
     if(this.amount){
@@ -69,7 +70,7 @@ const summonword = /冰箱/;
 const summonword2 = /櫃/;
 const ask = /有(?=.*(?:什麼|啥|甚麼))/;
 const add = /有/;//
-const remove = /沒有/;//
+const remove = /沒/;//
 //const change = 
 
 function handleEvent(event) {
@@ -90,10 +91,27 @@ function handleEvent(event) {
     }
   }
   else if(remove.test(event.message.text)){
+    const st = /沒有/;//
+    var separator='沒';
+    if(st.test(event.message.text)){
+      separator='沒有';
+    }
+    const words = event.message.text.split(separator);
+    const n = words[1].split('了');
+    for(var i=0;i<items.length;i++){
+      if(items[i].name==n[0]){
+        reply="好的! 冰箱沒有"+items[i].displayInfo();
+        items.splice(i,1);
+        break;
+      }
+    }
     
   }
   else if(add.test(event.message.text)){
-
+    const words = event.message.text.split('有');
+    var item = new Food(words[1],"","");
+    items.push(item);
+    reply="了解! 冰箱現在裡面有"+item.displayInfo();
   }
   if(reply==""){
     reply="!";
