@@ -51,7 +51,7 @@ app.post('/webhook', line.middleware(config), (req, res) => {
 
 app.post('/webhook', line.middleware(roomconfig), (req, res) => {
   for (const event of req.body.events) {
-    handleRoomEvent(event)
+    roomEvent(event)
       }
 
   res.send("OK")
@@ -131,10 +131,10 @@ var players={};//player information
   }
 
   async function handleEvent(event) {
+    if(!players.hasOwnProperty(event.source.userId)){
+      players[event.source.userId]=new Player(event.source.userId,0,0,"");
+    }
     //if(!seenIntro){//change into greeting
-      //show intro
-      //return;
-    //}
     // 如果不是文字訊息，就跳出
     console.log(event);
     //event.source.userId
@@ -143,7 +143,7 @@ var players={};//player information
     }
 
     const quitcheck = /離線/;
-    const moneycheck = /查詢利潤/;
+    const helpcheck = /說明/;
 
     const connectcheck = /連線/;
     if(!incall){ //Not in conversation
@@ -151,7 +151,7 @@ var players={};//player information
 
       }
 
-      else if(connectcheck.test((event.message.text)){
+      else if(connectcheck.test(event.message.text)){
         if(rawVictimInformation==""){
         }
         else{
@@ -231,27 +231,94 @@ var players={};//player information
     } 
       
   }
-  const newvictimcheck = /新用戶/;
+  
   async function roomEvent(event){
-    //filter out non group chats
-    if (event.type !== 'message' || event.message.type !== 'text') {
+    if (event.type !== 'message' || event.message.type !== 'text'|| event.source.type !== 'group') {//filter out non group chats
       return;
     }
-    if(newvictimcheck){
+    if(!players.hasOwnProperty(event.source.userId)){
+      players[event.source.userId]=new Player(event.source.userId,0,0,"");
+    }
+    console.log(event);
+    
+    
+    const newvictimcheck = /新的/;
+    const moneycheck = /查詢利潤/;
+    if(newvictimcheck.test(event.message.text)){
       var victim=await newVictim();
-      rawVictimInformation=victim;
+      const profilename = await fetchGroupUserProfile(event.source.groupid,event.source.userId);
+      players[event.source.userId].rawVictimInformation=victim;
+      
       client.replyMessage({
         replyToken: event.replyToken,
         messages: [{
           type: 'text',
-          text: `${victim.name}，${victim.age}歲${victim.gender}性
+          text: `@${profilename} ${victim.name}，${victim.age}歲${victim.gender}性
           你目前操作的用戶是對方的${victim.chatpartner}`,
           
       }],
       })
     }
-  }
+    else if(moneycheck.test(event.message.text)){
+        var responsetext=`你目前分到的利潤有${players[event.source.userId].revenue}元喔`;
 
+
+        client.replyMessage({
+        replyToken: event.replyToken,
+        messages: [{
+          type: 'text',
+          text: responsetext,
+          
+      }],
+      })
+    }
+  }
+  async function fetchUserProfile(userId) {
+    const url = `https://api.line.me/v2/bot/profile/${userId}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': config.channelAccessToken, // Replace YOUR_ACCESS_TOKEN with your actual access token
+          'Content-Type': 'application/json'
+        }
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+  
+      const userProfile = await response.json();
+      return userProfile;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  }
+  async function fetchGroupUserProfile(groupId,userId) {
+    const url = `https://api.line.me/v2/bot/group/${groupId}/member/${userId}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': roomconfig.channelAccessToken, // Replace YOUR_ACCESS_TOKEN with your actual access token
+          'Content-Type': 'application/json'
+        }
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+  
+      const userProfile = await response.json();
+      return userProfile;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  }
   app.listen(port, () => {
     console.log(`Sample LINE bot server listening on port ${port}...`)
   })
