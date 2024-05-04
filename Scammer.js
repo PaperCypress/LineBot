@@ -93,7 +93,7 @@ const CreateVictim = [
   "monvalue": 1000
 }` },
 ]
-const roleReminderVictim = `請你扮演上述這位角色，用personality的聊天口吻，你在手機上與chatPartner聊天，由我模仿本帳號並騙取你的銀行帳戶，請依我模仿的可信度、正確使用到人物資訊來回應並決定我的發言成功或失敗，成功的話在字串前加上success#，失敗的話在字串前加上fail#，沒有進展的話在字串前加上neutral#`;
+const roleReminderVictim = `請你扮演上述這位角色，用personality的聊天口吻，你在手機上與chatPartner聊天，由我模仿chatPartner並騙取你的銀行帳戶，請依我是否有模仿chatPartnet或正確使用到人物資訊來回應並決定我的發言成功或失敗，成功的話在字串前加上success#，失敗的話在字串前加上fail#，沒有進展的話在字串前加上neutral#`;
 
 const successPrompt =   { "role": "system", "content": "如果user有提到，訊息中一定要包含bank_account" };
 
@@ -104,7 +104,6 @@ async function test(){
   const msg=[];
   const startPrompt =    { "role": "system", "content": `"${JSON.stringify(vic)}"\n${roleReminderVictim}` };  
   msg.push(startPrompt);
-  console.log(startPrompt);
   console.log(msg);
   const completion = await openai.chat.completions.create({
     messages: msg,
@@ -112,7 +111,7 @@ async function test(){
   });
   console.log(completion.choices[0].message.content);
 }
-//test();
+test();
 var players={};//player information
 
   async function startai(player){
@@ -158,6 +157,7 @@ var players={};//player information
       
       const rawvictim=JSON.parse(completion.choices[0].message.content);
       rawvictim.chatPartner=partners[Math.floor(Math.random()*partners.length)];
+      rawvictim.bank_account=Math.floor(Math.random() * 100000000);
       console.log(rawvictim);
       
       return(rawvictim);
@@ -217,7 +217,9 @@ var players={};//player information
         else{//start a new conversation
           players[event.source.userId].incall=true;
           
-          const reply = await startai(players[event.source.userId]);
+          const response = await startai(players[event.source.userId]);
+          const reply = response.split('#')[1];
+          
           client.replyMessage({
             replyToken: event.replyToken,
             messages: [
@@ -225,7 +227,7 @@ var players={};//player information
               type: 'text',
               text: `${reply}`,
               sender: {
-                name: JSON.stringify(players[event.source.userId].currentVictim.name),          //switch profile 
+                name: JSON.stringify(players[event.source.userId].currentVictim.profile_name),          //switch profile 
 
                 iconUrl: "https://line.me/conyprof"
               },
@@ -353,7 +355,7 @@ var players={};//player information
               type: 'text',
               text: `${reply}`,
               sender: {
-                name: JSON.stringify(players[event.source.userId].currentVictim.name),
+                name: JSON.stringify(players[event.source.userId].currentVictim.profile_name),
                 iconUrl: "https://line.me/conyprof"
               },
               quickReply:{
