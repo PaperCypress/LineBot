@@ -2,7 +2,7 @@ const OpenAI = require("openai")
 const express = require('express')
 const line = require('@line/bot-sdk');
 const app = express()
-const port = 3000
+const port = process.env.PORT || 3000;
 
 
 //app.use("/images",)
@@ -172,7 +172,8 @@ var players={};//player information
         //change profile and name back
         //clear messages
         //clear rawvictiminfo
-        rawVictimInformation="";
+
+        players[event.source.userId].rawVictimInformation="";
         client.replyMessage({
           replyToken: event.replyToken,
           messages: [{
