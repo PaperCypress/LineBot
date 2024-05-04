@@ -34,7 +34,7 @@ const client = new line.messagingApi.MessagingApiClient({
   channelAccessToken: config.channelAccessToken
 })
 const scamRoom = new line.messagingApi.MessagingApiClient({
-  channelAccessToken: config.channelroomAccessToken
+  channelAccessToken: roomconfig.channelAccessToken
 })
 
 app.get('/', (req, res) => {
@@ -250,7 +250,7 @@ var players={};//player information
       const profilename = await fetchGroupUserProfile(event.source.groupid,event.source.userId);
       players[event.source.userId].rawVictimInformation=victim;
       
-      client.replyMessage({
+      scamRoom.replyMessage({
         replyToken: event.replyToken,
         messages: [{
           type: 'text',
@@ -264,7 +264,7 @@ var players={};//player information
         var responsetext=`你目前分到的利潤有${players[event.source.userId].revenue}元喔`;
 
 
-        client.replyMessage({
+        scamRoom.replyMessage({
         replyToken: event.replyToken,
         messages: [{
           type: 'text',
