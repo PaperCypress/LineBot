@@ -434,9 +434,9 @@ var players={};//player information
     if (event.type !== 'message' || event.message.type !== 'text'|| event.source.type !== 'group') {//filter out non group chats
       return;
     }
-    if(event.source.groupId !== process.env.GROUPID){
-      return;
-    }
+    //if(event.source.groupId !== process.env.GROUPID){
+      //return;
+    //}
     if(!players.hasOwnProperty(event.source.userId)){
       players[event.source.userId]=new Player(event.source.userId,0,false,"");
       console.log(event.source.userId);
