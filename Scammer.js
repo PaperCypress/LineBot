@@ -49,7 +49,7 @@ app.post('/webhook', line.middleware(config), (req, res) => {
   res.send("OK")
 })
 
-app.post('/webhook', line.middleware(roomconfig), (req, res) => {
+app.post('/roomwebhook', line.middleware(roomconfig), (req, res) => {
   for (const event of req.body.events) {
     roomEvent(event)
       }
