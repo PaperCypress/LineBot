@@ -184,7 +184,6 @@ var players={};//player information
     //if(!seenIntro){//change into greeting
     // 如果不是文字訊息，就跳出
     console.log(event);
-    //event.source.userId
     if (event.type !== 'message' || event.message.type !== 'text') {
       return;
     }
@@ -242,8 +241,7 @@ var players={};//player information
               text: `${reply}`,
               sender: {
                 name: JSON.stringify(players[event.source.userId].currentVictim.profile_name),          //switch profile 
-
-                iconUrl: "https://line.me/conyprof"
+                iconUrl: players[event.source.userId].currentIcon
               },
               quickReply:{
                 items:[
@@ -380,7 +378,7 @@ var players={};//player information
               text: `${reply}`,
               sender: {
                 name: JSON.stringify(players[event.source.userId].currentVictim.profile_name),
-                iconUrl: "https://line.me/conyprof"
+                iconUrl: players[event.source.userId].currentIcon
               },
               quickReply:{
                 items:[
@@ -431,7 +429,7 @@ var players={};//player information
             text: `${reply}`,
             sender: {
               name: JSON.stringify(players[event.source.userId].currentVictim.profile_name),
-              iconUrl: "https://line.me/conyprof"
+              iconUrl: players[event.source.userId].currentIcon
             },
             quickReply:{
               items:[
@@ -498,9 +496,16 @@ var players={};//player information
     
     const newvictimcheck = /新的/;
     const moneycheck = /我.*(賺|有).*錢/;
-    if(newvictimcheck.test(event.message.text)){
+    if(newvictimcheck.test(event.message.text)){//提供新的人
       var victim=await newVictim();
-      players[event.source.userId].currentIcon=
+      
+      players[event.source.userId].currentIcon=randomWomanIcons[Math.floor(Math.random()*randomWomanIcons.length)];
+      if(victim.gender=="男"){
+        players[event.source.userId].currentIcon=randomManIcons[Math.floor(Math.random()*randomManIcons.length)];
+      }
+      const iconurl=`https://papercypress.github.io/LineBot/static/${players[event.source.userId].currentIcon}.jpg`
+      players[event.source.userId].currentIcon=iconurl;
+      
       players[event.source.userId].provided=false;
       players[event.source.userId].alert=Number(victim.alert_level);
       console.log(JSON.stringify(victim.family));
