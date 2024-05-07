@@ -14,6 +14,7 @@ class Player {
         this.revenue = revenue;
         this.seenIntro = seenIntro; 
         this.currentVictim=currentVictim;
+        this.currentIcon="";
         this.incall=false;
         this.profileName="";
         this.messages=[];
@@ -67,6 +68,9 @@ const intro = "";//change profile, name, show quick reply
 const partners = ["朋友","兒子","女兒","銀行","網路戀人","家人","投資"];
 const randomTags = ["投資","愛情","結婚","旅遊","綁架","銀行","網路戀愛","環保","交易失誤","恐嚇"];
 const personalities = ["老人","文言文","中英夾雜","講話粗俗","愛撒嬌","愛裝可愛","御宅族","詩人","悲觀"];
+const randomManIcons = ["1","2","3","4","5","11","23","24","26"]; 
+const randomWomanIcons = ["1","2","3","5","7","8","9","10","23","24","25","26","27","28"]; 
+
 const CreateVictim = [
   { "role": "system", "content": `建立一位隨機人物，提供新的名字、性別、年齡、講話的個性、10~14位數字的銀行帳戶、社群用戶名稱、3~4個關於人物的資訊facts(例如：職業、工作公司、居住地點、家人的狀況、興趣、經常出沒場所、就醫紀錄、犯罪前科、過敏等)、、數字1~5的警戒心、感興趣的主題tags、valuemon是800~3000的數字，並且用這樣的json格式顯示出來
 {
@@ -104,7 +108,7 @@ async function test(){
   });
   console.log(completion.choices[0].message.content);
 }
-test();
+//test();
 var players={};//player information
 
   async function startai(player){
@@ -159,10 +163,12 @@ var players={};//player information
       return(rawvictim);
   }
   function SetRevenue(userid,revenue){
-    if(players.hasOwnProperty(userId)){
-      players[userid].revenue=revenue;
+    if(players.hasOwnProperty(userid)){
+      players[userid].revenue=Number(revenue);
     }
-    
+    Object.entries(players).forEach(([key, value]) => {
+      console.log(key,value.profileName ,value.revenue);
+   });
   }
   process.stdin.on('data', function(data) {
     // Convert the input data to a string and remove whitespace
@@ -482,6 +488,7 @@ var players={};//player information
     .then((profile) => {
       console.log(profile.displayName); //顯示使用者名字
       profilename=profile.displayName;
+      players[event.source.userId].profileName=profile.displayName;
       console.log(profile.userId);
       console.log(profile.statusMessage) // 使用者自介內容
     })
@@ -493,6 +500,7 @@ var players={};//player information
     const moneycheck = /我.*(賺|有).*錢/;
     if(newvictimcheck.test(event.message.text)){
       var victim=await newVictim();
+      players[event.source.userId].currentIcon=
       players[event.source.userId].provided=false;
       players[event.source.userId].alert=Number(victim.alert_level);
       console.log(JSON.stringify(victim.family));
