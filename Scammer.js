@@ -64,9 +64,8 @@ app.post('/roomwebhook', line.middleware(roomconfig), (req, res) => {
   res.send("OK")
 })
 
-const intro = "";//change profile, name, show quick reply
 const partners = ["朋友","兒子","女兒","銀行","網路戀人","家人","投資"];
-const randomTags = ["投資","愛情","結婚","旅遊","綁架","銀行","網路戀愛","環保","交易失誤","恐嚇"];
+const randomTags = ["投資","愛情","結婚","旅遊","綁架","銀行","網路戀愛","環保","轉帳失誤","恐嚇","家人"];
 const personalities = ["老人","文言文","中英夾雜","講話粗俗","愛撒嬌","愛裝可愛","御宅族","詩人","悲觀"];
 const randomManIcons = ["1","2","3","4","5","11","23","24","26"]; 
 const randomWomanIcons = ["1","2","3","5","7","8","9","10","23","24","25","26","27","28"]; 
@@ -89,8 +88,8 @@ const CreateVictim = [
   "monvalue": 1000
 }` },
 ]
-const roleReminderVictim = `你是上述這位角色，聊天口吻按照personality，請依我的回覆是否與tags有關聯或使用到角色資訊來回應並決定我的發言成功或失敗，第一句不要直接提到tags，成功的話在字串前加上success#，失敗的話在字串前加上fail#，沒有進展的話在字串前加上neutral#`;
-const begin =  { "role": "system", "content": "你剛用手機聊天app跟我連絡上，但你不認識帳戶名稱" };
+const roleReminderVictim = `你是上述這位角色，聊天口吻按照personality，請回應並依我的回覆是否與tags有關聯、使用到角色資訊facts或我扮演的人物與partner相符，來決定我的發言成功或失敗，第一句不可以包含tags，成功的話在字串前加上success#，失敗的話在字串前加上fail#，沒有進展的話在字串前加上neutral#`;
+const begin =  { "role": "system", "content": "你剛用手機聊天app跟我連絡上，但你不認識帳戶名稱"};
 
 const successPrompt =   { "role": "system", "content": "如果user有曾提到銀行帳戶或號碼，你的回覆中一定要包含bank_account" };
 
@@ -109,6 +108,7 @@ async function test(){
   console.log(completion.choices[0].message.content);
 }
 //test();
+LoadData();
 var players={};//player information
 
   async function startai(player){
@@ -121,7 +121,7 @@ var players={};//player information
       messages: player.messages,
       model: "gpt-3.5-turbo",
     });
-
+    console.log(completion.choices[0].message.content);
     return(completion.choices[0].message.content);
   }
   async function askai(msg,player,state) {
@@ -155,8 +155,18 @@ var players={};//player information
       });
       
       const rawvictim=JSON.parse(completion.choices[0].message.content);
+      rawvictim.partner=partners[Math.floor(Math.random()*partners.length)];
       rawvictim.personality=personalities[Math.floor(Math.random()*personalities.length)];
-      //rawvictim.chatPartner=partners[Math.floor(Math.random()*partners.length)];
+      const index1 = Math.floor(Math.random() * randomTags.length);
+      let index2 = Math.floor(Math.random() * randomTags.length);
+  
+  // Ensure index2 is different from index1
+      while (index2 === index1) {
+        index2 = Math.floor(Math.random() * randomTags.length);
+      }
+      rawvictim.tags=[2];
+      rawvictim.tags[0]=randomTags[index1];
+      rawvictim.tags[1]=randomTags[index2];
       rawvictim.bank_account=Math.floor(1000000000 + Math.random() * 9000000000);
       console.log(rawvictim);
       
@@ -166,16 +176,45 @@ var players={};//player information
     if(players.hasOwnProperty(userid)){
       players[userid].revenue=Number(revenue);
     }
+    var totalrevenue=0;
     Object.entries(players).forEach(([key, value]) => {
       console.log(key,value.profileName ,value.revenue);
+      totalrevenue+=value.revenue;
    });
+    console.log("總金額"+totalrevenue);
+
+  }
+  function SaveData(){
+    var json = JSON.stringify(players);
+    var fs = require('fs');
+    fs.writeFile('save.json', json, 'utf8', function(callback){
+      console.log('Saved'); 
+    });
+  }
+  function LoadData(){
+    var fs = require('fs');
+    fs.readFile('save.json', 'utf8', function readFileCallback(err, data){
+      if (err){
+          console.log(err);
+      } else {
+      players = JSON.parse(data); //now it an object
+      console.log('Loaded'); 
+  }});
   }
   process.stdin.on('data', function(data) {
     // Convert the input data to a string and remove whitespace
     var input = data.toString().trim();
     
-    // Call the function with the input as parameter
-    SetRevenue(input.split('.')[0],input.split('.')[1]);
+    if(input==="save"){
+      SaveData();
+    } 
+    else if(input==="load"){
+      LoadData();
+    }
+    else{
+      SetRevenue(input.split('.')[0],input.split('.')[1]);
+    }
+    
 });
   async function handleEvent(event) {
     if(!players.hasOwnProperty(event.source.userId)){
@@ -188,9 +227,9 @@ var players={};//player information
       return;
     }
 
-    const quitcheck = /離線/;
-    const helpcheck = /說明/;
-    const connectcheck = /連線/;
+    const quitcheck = /離線|disconnect/;
+    const helpcheck = /幫助|help|說明|h/;
+    const connectcheck = /連線|connect/;
     if(!players[event.source.userId].incall){ //Not in conversation
       if(connectcheck.test(event.message.text)){
         if(players[event.source.userId].currentVictim==""){//no target
@@ -231,8 +270,11 @@ var players={};//player information
           players[event.source.userId].incall=true;
           
           const response = await startai(players[event.source.userId]);
-          const reply = response.split('#')[1];
-          
+          var reply = response.split('#')[1];
+          if(!response.includes('#')){
+            reply = response.split('#')[0];
+          }
+
           client.replyMessage({
             replyToken: event.replyToken,
             messages: [
@@ -240,7 +282,7 @@ var players={};//player information
               type: 'text',
               text: `${reply}`,
               sender: {
-                name: JSON.stringify(players[event.source.userId].currentVictim.profile_name),          //switch profile 
+                name: victimInfo(players[event.source.userId].currentVictim.profile_name),          //switch profile 
                 iconUrl: players[event.source.userId].currentIcon
               },
               quickReply:{
@@ -268,12 +310,21 @@ var players={};//player information
         }
       }
       else if(helpcheck.test(event.message.text)){//help
+        var targettext=`尚未指定的對象用戶，請聯繫管理者指派新的對象`;
+        if(players[event.source.userId].currentVictim!=""){
+          targettext=`目前指派對象用戶為${victimInfo(players[event.source.userId].currentVictim.profile_name)}`;
+        }
         client.replyMessage({
           replyToken: event.replyToken,
           messages: [
             {
+              type: 'text',
+              text: `請由管理員指派預計連線用戶，本工具將隨機代理用戶成為對象用戶及本端的中介，\n當有指派的對象用戶後，輸入"連線"即可連線\n在對話中輸入"離線"則會斷線並結束對話。不論被對方斷線或主動離線，再次連線到同個對象則會分配一個新的代理用戶做為窗口給你使用`,//regex test sole usage of the word
+              //show profile flex box
+          },
+            {
             type: 'text',
-            text: `請由管理員指派預計連線用戶，本工具將隨機代理用戶成為對象用戶及本端的中介，\n當有指派的對象用戶後，輸入"連線"即可連線\n在對話中輸入"離線"則會斷線並結束對話。不論被對方斷線或主動離線，再次連線到同個對象則會分配一個新的代理用戶做為窗口給你使用`,//regex test sole usage of the word
+            text: targettext,
             //show profile flex box
             quickReply:{
               items:[
@@ -298,7 +349,39 @@ var players={};//player information
         }]
         })
       }
-
+      else if(quitcheck.test(event.message.text)){
+        client.replyMessage({
+          replyToken: event.replyToken,
+          messages: [
+            {
+            type: 'text',
+            text: `目前沒有連上任何用戶`,
+            quickReply:{
+              items:[
+                {
+                  action: {
+                    type: "message",
+                    label: "連線",
+                    text: "連線"
+                  },
+                  type: "action"
+                },
+                {
+                  action: {
+                    type: "message",
+                    label: "說明",
+                    text: "說明"
+                  },
+                  type: "action"
+                }
+              ]
+            }
+        }]
+        })
+      }
+      else{//not connect or 
+        
+      }
 
 
     }    
@@ -377,7 +460,7 @@ var players={};//player information
               type: 'text',
               text: `${reply}`,
               sender: {
-                name: JSON.stringify(players[event.source.userId].currentVictim.profile_name),
+                name: victimInfo(players[event.source.userId].currentVictim.profile_name),
                 iconUrl: players[event.source.userId].currentIcon
               },
               quickReply:{
@@ -428,7 +511,7 @@ var players={};//player information
             type: 'text',
             text: `${reply}`,
             sender: {
-              name: JSON.stringify(players[event.source.userId].currentVictim.profile_name),
+              name: victimInfo(players[event.source.userId].currentVictim.profile_name),
               iconUrl: players[event.source.userId].currentIcon
             },
             quickReply:{
@@ -458,7 +541,7 @@ var players={};//player information
     if (event.source.type !== 'group') {//filter out non group chats
       return;
     }
-    if (event.type == 'memberJoined') {//filter out non group chats
+    if (event.type == 'memberJoined') {
       scamRoom.replyMessage({
         replyToken: event.replyToken,
         messages: [{
@@ -494,8 +577,8 @@ var players={};//player information
       console.log("Could not get profile"+err);
     });
     
-    const newvictimcheck = /新的/;
-    const moneycheck = /我.*(賺|有).*錢/;
+    const newvictimcheck = /新的|指派/;
+    const moneycheck = /我.*(賺|有).*(錢|收入|利潤)/;
     if(newvictimcheck.test(event.message.text)){//提供新的人
       var victim=await newVictim();
       
@@ -508,19 +591,23 @@ var players={};//player information
       
       players[event.source.userId].provided=false;
       players[event.source.userId].alert=Number(victim.alert_level);
-      console.log(JSON.stringify(victim.family));
       players[event.source.userId].currentVictim=victim;
+      
+
+      //roll for facts and approaches
+      const factroll=Math.floor(Math.random()*3+1);
+      var factstring=
       //break if incall
       scamRoom.replyMessage({
         replyToken: event.replyToken,
         messages: [{
           type: 'text',
-          text: `@${profilename} 你的下一個對象是${JSON.stringify(victim.name)}\n一位${JSON.stringify(victim.age)}歲${JSON.stringify(victim.gender)}性`,  
+          text: `@${profilename} 你的下一個對象是${victimInfo(victim.name)}\n一位${JSON.stringify(victim.age)}歲${victimInfo(victim.gender)}性\n`,  
           
       },
       {
         type: 'text',
-        text: `建議可以透過${JSON.stringify(victim.tags[0])}或${JSON.stringify(victim.tags[1])}的面相來操作`,
+        text: `建議可以透過${victimInfo(victim.tags[0])}或${victimInfo(victim.tags[1])}的面相來操作`,
         
     }
     
@@ -560,7 +647,7 @@ var players={};//player information
         else{
         players[event.source.userId].revenue+=players[event.source.userId].currentVictim.monvalue;
         players[event.source.userId].provided=true;  
-        
+        SaveData();
         scamRoom.replyMessage({
           replyToken: event.replyToken,
           messages: [{
@@ -575,7 +662,9 @@ var players={};//player information
     }
 
   }
-
+  function victimInfo(victimProperty){
+    return JSON.stringify(victimProperty).replace(/^"|"$/g, '');
+  }
 
 
   app.listen(port, () => {
